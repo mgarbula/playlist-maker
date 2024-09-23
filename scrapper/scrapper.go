@@ -5,12 +5,13 @@ import (
 	"playlist-maker/structs"
 	"strconv"
 	"time"
+
 	"github.com/gocolly/colly"
 )
 
 var albums []structs.Album
 
-func GetAlbums() []structs.Album {
+func GetAlbums(path string) []structs.Album {
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.pitchfork.com", "pitchfork.com"),
 	)
@@ -30,11 +31,11 @@ func GetAlbums() []structs.Album {
 		albums = append(albums, album)
 	})
 
-	c.Visit("https://www.pitchfork.com/reviews/albums")
+	c.Visit(path)
 	return albums
 }
 
-func GetRating(album *structs.Album, channel chan<-*structs.Album, sc *structs.SafeCounter) {
+func GetRating(album *structs.Album, channel chan<- *structs.Album, sc *structs.SafeCounter, sac *structs.SafeAlbumsCounter) {
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.pitchfork.com", "pitchfork.com"),
 	)
@@ -47,6 +48,16 @@ func GetRating(album *structs.Album, channel chan<-*structs.Album, sc *structs.S
 		ratingAsText := ratingElement.Text
 		rating, _ := strconv.ParseFloat(ratingAsText, 32)
 		album.Rating = float32(rating)
+		if album.Rating >= float32(structs.MinRate) && album.Rating <= float32(structs.MaxRate) {
+			sac.Mu.Lock()
+			if sac.Counter < structs.AlbumsNumber {
+				sac.Counter++
+				sac.Mu.Unlock()
+				channel <- album
+			} else {
+				sac.Mu.Unlock()
+			}
+		}
 	})
 
 	sc.Mu.Lock()
@@ -56,7 +67,12 @@ func GetRating(album *structs.Album, channel chan<-*structs.Album, sc *structs.S
 		sc.Counter = 0
 	}
 	sc.Mu.Unlock()
-	c.Visit("https://www.pitchfork.com" + album.RatingHref)
 
-	channel <- album
+	sac.Mu.Lock()
+	if sac.Counter < structs.AlbumsNumber {
+		sac.Mu.Unlock()
+		c.Visit("https://www.pitchfork.com" + album.RatingHref)
+	} else {
+		sac.Mu.Unlock()
+	}
 }

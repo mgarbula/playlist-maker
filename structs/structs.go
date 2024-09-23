@@ -25,4 +25,11 @@ type SafeReady struct {
 	Ready bool
 }
 
+type SafeAlbumsCounter struct {
+	Mu sync.Mutex
+	Counter int
+}
+
 const MaxCalls = 30
+var AlbumsNumber int
+var MinRate, MaxRate float64
