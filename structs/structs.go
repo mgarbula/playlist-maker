@@ -30,6 +30,10 @@ type SafeAlbumsCounter struct {
 	Counter int
 }
 
+type Configuration struct {
+	ClientId, ClientSecret string
+}
+
 const MaxCalls = 30
 var AlbumsNumber int
 var MinRate, MaxRate float64
