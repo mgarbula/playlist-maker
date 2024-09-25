@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"playlist-maker/structs"
 	"strconv"
+	"strings"
 	"time"
-
 	"github.com/gocolly/colly"
 )
 
@@ -26,7 +26,7 @@ func GetAlbums(path string) []structs.Album {
 			album.Genre = append(album.Genre, e.Text)
 		})
 		album.Title = albumElement.ChildText("h3.summary-item__hed")
-		album.Artist = albumElement.ChildText("div.summary-item__sub-hed")
+		album.Artist = strings.Split(albumElement.ChildText("div.summary-item__sub-hed"), " / ")
 		album.RatingHref = albumElement.ChildAttr("a", "href")
 		albums = append(albums, album)
 	})

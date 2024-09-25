@@ -6,9 +6,9 @@ import (
 )
 
 type Album struct {
-	Title, Artist, RatingHref string
-	Rating                    float32
-	Genre                     []string
+	Title, RatingHref string
+	Rating            float32
+	Genre, Artist 	  []string
 }
 
 func (album Album) String() string {
