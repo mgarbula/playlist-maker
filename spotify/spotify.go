@@ -2,34 +2,51 @@ package spotify
 
 import (
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
-	"encoding/json"
+	"context"
+	"golang.org/x/oauth2"
 )
 
-func GetBearer(clientId string, clientSecret string) (string, error) {
-	resp, err := http.PostForm("https://accounts.spotify.com/api/token",
-		url.Values{"grant_type": {"client_credentials"}, "client_id": {clientId}, "client_secret": {clientSecret}})
-	if err != nil {
-		return "", fmt.Errorf("Error on getBearer: %w", err)
-	}
-	defer resp.Body.Close()
+func Authorize(ctx context.Context, clientID string, clientSecret string) (string, error) {
+	authURL := "https://accounts.spotify.com/authorize"
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP error on getBearer: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("Error reading response body: %w", err)
+	config := &oauth2.Config{
+		ClientID: clientID,
+		ClientSecret: clientSecret,
+		Scopes: []string{"user-read-private", "user-read-email"},
+		Endpoint: oauth2.Endpoint{
+			AuthURL: authURL,
+			TokenURL: "https://accounts.spotify.com/api/token",
+		},
+		RedirectURL: "http://localhost:8080",
 	}
 
-	m := make(map[string]interface{})
-	err = json.Unmarshal(body, &m)
-	if err != nil {
-		return "", fmt.Errorf("Error: %w", err)
-	}
-	
-	return m["access_token"].(string), nil
+	accessTokenChan := make(chan string, 1)
+
+	go func() {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			code := r.URL.Query().Get("code")
+			if code != "" {
+				token, errToken := config.Exchange(ctx, code)
+				if errToken != nil {
+					fmt.Println("Error while token exchange: %w", errToken)
+					return
+				}
+				accessTokenChan <- token.AccessToken
+				w.Write([]byte("You can close that window!"))
+			}
+		})
+		http.ListenAndServe(":8080", nil)
+	}()
+
+	fmt.Println("Please open the following URL in your web browser:")
+	fmt.Println(config.AuthCodeURL(""))
+
+	select {
+	case accessToken := <- accessTokenChan:
+		return accessToken, nil
+	case <- ctx.Done():
+		fmt.Println("Authorization timed out!")
+		return "", ctx.Err()
+	}	
 }
