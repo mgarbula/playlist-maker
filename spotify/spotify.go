@@ -90,7 +90,7 @@ func SearchAlbum(album structs.Album, bearer string) (string, error) {
 		if strings.EqualFold(item.Name, album.Title) {
 			for _, artist := range item.Artists {
 				if global.Contains(album.Artist, artist.Name) {
-					return item.Href, nil
+					return item.ID, nil
 				}
 			}
 		}
