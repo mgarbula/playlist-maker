@@ -90,7 +90,7 @@ func main() {
 	flag.Parse()
 	genres := flag.Args()
 
-	file, _ := os.Open("my_config.json")
+	file, _ := os.Open("config.json")
 	defer file.Close()
 	decoder := json.NewDecoder(file)
 	configuration := structs.Configuration{}
